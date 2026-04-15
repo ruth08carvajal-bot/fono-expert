@@ -1,4 +1,4 @@
-import logo from './logo.svg';
+/*import logo from './logo.svg';
 import './App.css';
 
 function App() {
@@ -18,6 +18,19 @@ function App() {
           Learn React
         </a>
       </header>
+    </div>
+  );
+}
+
+export default App;
+*/
+import Evaluacion from './components/Evaluacion';
+
+function App() {
+  return (
+    <div className="App">
+      {/* Aquí estamos llamando a tu lógica del sistema experto */}
+      <Evaluacion />
     </div>
   );
 }
