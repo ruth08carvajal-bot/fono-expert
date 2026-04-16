@@ -106,7 +106,7 @@ function App() {
               Evaluando a: <b>{ninoSeleccionado.nombre_nino}</b>
             </span>
           </div>
-          <Evaluacion idNino={ninoSeleccionado.id_nino} />
+          <Evaluacion nino={ninoSeleccionado} alCompletarAnamnesis={() => obtenerNinos(usuario.id_usuario)} />
         </div>
       )}
 

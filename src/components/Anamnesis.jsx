@@ -37,7 +37,7 @@ function Anamnesis({ idNino, edadNino, alFinalizar }) {
 
         try {
             // Endpoint que tenías en Kotlin: /guardar_anamnesis o /evaluar
-            const res = await axios.post('http://127.0.0.1:5000/evaluar', payload);
+            const res = await axios.post('http://127.0.0.1:5000/guardar_anamnesis', payload);
             if (res.data.status === "success") {
                 alFinalizar(res.data); // Navegar a SeleccionSospecha
             }

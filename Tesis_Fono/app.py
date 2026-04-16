@@ -106,6 +106,8 @@ def obtener_ninos_padre(id_usuario):
         # Convertimos el contador a Booleano para Android
         for n in ninos:
             n['tiene_anamnesis'] = n['tiene_anamnesis'] > 0
+            # Agregamos el texto del botón basado en si tiene anamnesis
+            n['accion_boton'] = "EVALUAR" if n['tiene_anamnesis'] else "INICIAR CON EL ANAMNESIS"
             
         return jsonify(ninos), 200
     except Exception as e:

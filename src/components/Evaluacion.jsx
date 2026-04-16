@@ -1,9 +1,26 @@
 import { useState } from 'react';
+import Anamnesis from './Anamnesis';
 import { enviarAFonoaudiologia } from '../services/api';
 
-function Evaluacion() {
+function Evaluacion({ nino, alCompletarAnamnesis }) {
   const [diagnostico, setDiagnostico] = useState(null);
   const [cargando, setCargando] = useState(false);
+
+  // Si el niño no tiene anamnesis, mostrar el componente de anamnesis
+  if (!nino.tiene_anamnesis) {
+    return (
+      <Anamnesis 
+        idNino={nino.id_nino} 
+        edadNino={nino.edad} 
+        alFinalizar={(datos) => {
+          // Recargar la lista de niños para actualizar el estado de anamnesis
+          alCompletarAnamnesis();
+          // Aquí podrías cambiar el estado para mostrar la evaluación
+          alert("Anamnesis completada. Ahora puedes proceder con la evaluación.");
+        }} 
+      />
+    );
+  }
 
   const manejarRespuesta = async (valor) => {
     setCargando(true);

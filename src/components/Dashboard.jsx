@@ -48,7 +48,7 @@ function Dashboard({ datosPadre, alIrARegistroNino, alSeleccionarNino, cerrarSes
                     onClick={() => alSeleccionarNino(nino)} 
                     style={estilos.botonEvaluar}
                   >
-                    Evaluar
+                    {nino.accion_boton || 'Evaluar'}
                   </button>
                 </div>
               ))
