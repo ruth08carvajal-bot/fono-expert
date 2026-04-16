@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Login from './components/Login';
 import Registro from './components/Registro';
 import Dashboard from './components/Dashboard';
@@ -6,45 +6,68 @@ import RegistroNino from './components/RegistroNino';
 import Evaluacion from './components/Evaluacion';
 
 function App() {
-  // ESTADOS PRINCIPALES
-  const [usuario, setUsuario] = useState(null); // Guarda los datos del padre y sus hijos
-  const [vista, setVista] = useState('login'); // Controla: login, registro, dashboard, nuevo_nino, evaluacion
-  const [ninoSeleccionado, setNinoSeleccionado] = useState(null); // Para saber a quién evaluar
+  const [usuario, setUsuario] = useState(null);
+  const [vista, setVista] = useState('login');
+  const [ninoSeleccionado, setNinoSeleccionado] = useState(null);
 
-  // FUNCIÓN PARA CERRAR SESIÓN
+  // 🔥 OBTENER NIÑOS DEL BACKEND
+  const obtenerNinos = async (idUsuario) => {
+    try {
+      const response = await fetch(`http://localhost:5000/obtener_ninos_padre/${idUsuario}`);
+      const data = await response.json();
+
+      setUsuario((prev) => ({
+        ...prev,
+        hijos: data
+      }));
+
+    } catch (error) {
+      console.error("Error al obtener niños:", error);
+    }
+  };
+
+  // 🔥 RECARGA AUTOMÁTICA AL ENTRAR AL DASHBOARD
+  useEffect(() => {
+    if (vista === 'dashboard' && usuario?.id_usuario) {
+      obtenerNinos(usuario.id_usuario);
+    }
+  }, [vista]);
+
+  // 🔒 CERRAR SESIÓN
   const manejarCerrarSesion = () => {
     setUsuario(null);
     setNinoSeleccionado(null);
     setVista('login');
   };
 
-  // RENDERIZADO CONDICIONAL DE VISTAS
   return (
     <div style={estilos.appContainer}>
       
-      {/* 1. PANTALLA DE LOGIN */}
+      {/* LOGIN */}
       {vista === 'login' && (
         <Login 
           alLoguear={(datos) => { 
-            setUsuario(datos); 
+            setUsuario(datos);
+            obtenerNinos(datos.id_usuario);
             setVista('dashboard'); 
           }} 
           irARegistro={() => setVista('registro')} 
         />
       )}
 
-      {/* 2. PANTALLA DE REGISTRO INICIAL (PADRE + 1er HIJO) */}
+      {/* REGISTRO */}
       {vista === 'registro' && (
         <Registro 
           alRegistrar={(datos) => { 
-            setUsuario(datos); 
+            setUsuario(datos);
+            obtenerNinos(datos.id_usuario);
             setVista('dashboard'); 
           }} 
           volverAlLogin={() => setVista('login')} 
         />
       )}
 
-      {/* 3. PANTALLA PRINCIPAL / DASHBOARD (SIN ROBOT) */}
+      {/* DASHBOARD */}
       {vista === 'dashboard' && usuario && (
         <Dashboard 
           datosPadre={usuario}
@@ -57,24 +80,26 @@ function App() {
         />
       )}
 
-      {/* 4. REGISTRO DE NUEVO NIÑO (SOLO DATOS NIÑO + ROBOT) */}
+      {/* REGISTRO NUEVO NIÑO */}
       {vista === 'nuevo_nino' && usuario && (
         <RegistroNino 
-          idPadre={usuario.id_padre}
-          alFinalizar={(datosActualizados) => {
-            // Actualizamos el estado global con la nueva lista de hijos que devuelva el server
-            setUsuario(datosActualizados);
+          idPadre={usuario.id_usuario} // 🔥 IMPORTANTE
+          alFinalizar={() => {
+            obtenerNinos(usuario.id_usuario);
             setVista('dashboard');
           }}
           volver={() => setVista('dashboard')}
         />
       )}
 
-      {/* 5. PANTALLA DE EVALUACIÓN (SISTEMA EXPERTO) */}
+      {/* EVALUACIÓN */}
       {vista === 'evaluacion' && ninoSeleccionado && (
         <div style={estilos.evaluacionWrapper}>
           <div style={estilos.barraSuperior}>
-            <button onClick={() => setVista('dashboard')} style={estilos.botonVolver}>
+            <button 
+              onClick={() => setVista('dashboard')} 
+              style={estilos.botonVolver}
+            >
               ← Volver al Panel
             </button>
             <span style={estilos.textoEval}>
@@ -89,7 +114,7 @@ function App() {
   );
 }
 
-// ESTILOS BÁSICOS PARA LA ESTRUCTURA
+// 🎨 ESTILOS
 const estilos = {
   appContainer: {
     width: '100vw',

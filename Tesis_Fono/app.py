@@ -64,7 +64,7 @@ def login():
                 return jsonify({
                     "status": "success",
                     "message": f"Bienvenido {usuario['nombre_completo'] or 'Usuario'}",
-                    "user_id": usuario['id_usuario'],
+                    "id_usuario": usuario['id_usuario'],  # ✅ CORREGIDO
                     "id_nino": id_nino,
                     "rol": usuario['nombre_rol']
                 }), 200
