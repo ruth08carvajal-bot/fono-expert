@@ -6,7 +6,9 @@ from conexion_db import Database
 from motor_inferencia import MotorInferencia
 from progreso import GestorProgreso
 from werkzeug.security import generate_password_hash, check_password_hash
-from procesador_audio import ProcesadorAudio # Nuevo import
+from werkzeug.utils import secure_filename
+from estimulos import obtener_palabras_por_sospechas
+from procesador_audio import ProcesadorAudio
 
 
 app = Flask(__name__)
@@ -442,43 +444,39 @@ def registrar_evidencia():
 def analizar_audio():
     if 'audio' not in request.files:
         return jsonify({"status": "error", "message": "No se recibió audio"}), 400
-    
+
     id_evaluacion = request.form.get('id_evaluacion')
     id_hecho = request.form.get('id_hecho')
     audio_file = request.files['audio']
-    
-    # Aseguramos que la carpeta exista
+
+    if not id_evaluacion or not id_hecho:
+        return jsonify({"status": "error", "message": "Faltan datos de evaluación o hecho"}), 400
+
     UPLOAD_FOLDER = 'uploads'
     if not os.path.exists(UPLOAD_FOLDER):
         os.makedirs(UPLOAD_FOLDER)
-    
-    # Creamos la ruta completa usando la extensión original del archivo
-    filename = f"eval_{id_evaluacion}_hecho_{id_hecho}.3gp"
-    path_temp = os.path.join(UPLOAD_FOLDER, filename)
-    
+
+    filename = secure_filename(audio_file.filename)
+    extension = os.path.splitext(filename)[1] or '.wav'
+    path_temp = os.path.join(UPLOAD_FOLDER, f"eval_{id_evaluacion}_hecho_{id_hecho}{extension}")
     audio_file.save(path_temp)
-    
+
     try:
-        # 1. Usamos el nuevo módulo para extraer MFCC
         mfccs = audio_proc.extraer_mfcc(path_temp)
         if mfccs is None:
             return jsonify({"status": "error", "message": "Audio corrupto o formato no soportado"}), 400
-            
-        # 2. Obtenemos el valor de la lógica fuzzy
+
         valor_fuzzy = audio_proc.calcular_similitud_fuzzy(mfccs, id_hecho)
-        
-        # 3. Guardamos evidencia en la BD
-        # Nota: Asegúrate de que motor.agregar_hecho_a_bd esté implementado
         motor.agregar_hecho_a_bd(id_evaluacion, id_hecho, valor_fuzzy)
-        
-        # 4. Buscamos qué sigue (Por defecto meta 3: Fonológico)
+
         siguiente = motor.buscar_siguiente_pregunta(3, id_evaluacion)
+        finalizado = siguiente.get('status') == 'meta_alcanzada'
 
         return jsonify({
             "status": "success",
             "valor_fuzzy": valor_fuzzy,
-            "siguiente_juego": siguiente['id_hecho'] if siguiente['status'] == 'pregunta_pendiente' else None,
-            "finalizado": siguiente['status'] == 'meta_alcanzada'
+            "siguiente_juego": siguiente.get('id_hecho'),
+            "finalizado": finalizado
         }), 200
 
     except Exception as e:
@@ -486,8 +484,7 @@ def analizar_audio():
         return jsonify({"status": "error", "message": str(e)}), 500
 
     finally:
-        # Limpieza: Borramos el archivo para no saturar el servidor
-        if os.path.exists(path_temp): 
+        if os.path.exists(path_temp):
             os.remove(path_temp)
 
 # --- MÓDULO 3: DIAGNÓSTICO FINAL (UNIFICADO) ---
@@ -505,16 +502,11 @@ def finalizar_evaluacion():
         motor.guardar_reporte_final(id_evaluacion, resultado)
 
         # 3. Generamos el PDF usando los datos calculados
-        #archivo_pdf = gestor_p.crear_pdf_especialista(
-        #    nombre_nino, 
-        #    resultado['diagnostico'], 
-        #    f"{resultado['certeza']}"
-        #)
-        # 3. CORRECCIÓN: Pasamos id_evaluacion, nombre_nino y el objeto resultado completo
         archivo_pdf = gestor_p.crear_pdf_especialista(
-            id_evaluacion,
-            nombre_nino, 
-            resultado
+            nombre_nino,
+            resultado['diagnostico'],
+            resultado['certeza'],
+            id_evaluacion
         )
         
         return jsonify({
@@ -541,6 +533,18 @@ def obtener_actividades(id_nino):
     # y decide si envía: Juego de Soplo, Juego de Fonemas o Repetición.
     actividades = gestor_p.generar_ruta_personalizada(id_nino)
     return jsonify(actividades)
+
+@app.route('/obtener_estimulaciones', methods=['POST'])
+def obtener_estimulaciones():
+    datos = request.get_json() or {}
+    sospechas = datos.get('sospechas', [])
+    palabras = obtener_palabras_por_sospechas(sospechas)
+    return jsonify({
+        "status": "success",
+        "sospechas": sospechas,
+        "estimulaciones": palabras,
+        "cantidad": len(palabras)
+    }), 200
 
 @app.route('/verificar_estado_ciclo/<int:id_nino>', methods=['GET'])
 def verificar_estado_ciclo(id_nino):
