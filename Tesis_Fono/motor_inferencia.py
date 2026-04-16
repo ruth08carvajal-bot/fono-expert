@@ -83,29 +83,45 @@ class MotorInferencia:
         Analiza la memoria de trabajo (hechos de anamnesis y sospechas) 
         y devuelve una lista de diagnósticos ordenados por relevancia.
         """
+        if not self.memoria_trabajo:
+            return []
+
         db = self.db_manager.conectar()
+        if not db:
+            return []
+
         cursor = db.cursor(dictionary=True)
         try:
-            # Obtenemos los IDs de los hechos que ya están en memoria (Anamnesis)
             ids_hechos = list(self.memoria_trabajo.keys())
-            if not ids_hechos: return []
+            if not ids_hechos:
+                return []
 
-            # Creamos los placeholders (%s, %s...) para la consulta SQL
             format_strings = ','.join(['%s'] * len(ids_hechos))
             sql = f"""
-                SELECT id_diagnostico, COUNT(*) as coincidencias
+                SELECT id_diagnostico, id_hecho, peso_certeza
                 FROM reglas_diagnostico
                 WHERE id_hecho IN ({format_strings})
-                GROUP BY id_diagnostico
-                ORDER BY coincidencias DESC
             """
             cursor.execute(sql, tuple(ids_hechos))
-            resultados = cursor.fetchall()
-            
-            # Retornamos solo la lista de IDs de diagnósticos (metas)
-            return [r['id_diagnostico'] for r in resultados]
+            reglas = cursor.fetchall()
+
+            puntuaciones = {}
+            for regla in reglas:
+                valor = float(self.memoria_trabajo.get(regla['id_hecho'], 0.0))
+                score = valor * float(regla['peso_certeza'])
+                if regla['id_diagnostico'] not in puntuaciones:
+                    puntuaciones[regla['id_diagnostico']] = score
+                else:
+                    puntuaciones[regla['id_diagnostico']] += score
+
+            diagnósticos_ordenados = sorted(
+                puntuaciones.items(),
+                key=lambda item: item[1],
+                reverse=True
+            )
+            return [diag[0] for diag in diagnósticos_ordenados]
         finally:
-            if db: db.close()
+            db.close()
 
     # --- ESTRATEGIA DE CONTROL: BACKWARD CHAINING ---
     def buscar_siguiente_pregunta(self, id_diagnostico, id_evaluacion):
