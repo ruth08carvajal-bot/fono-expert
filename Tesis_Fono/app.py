@@ -238,33 +238,102 @@ def guardar_anamnesis():
     id_nino = data.get('id_nino')
     hechos = data.get('hechos') # La lista que viene de Android
 
+    print(f"DEBUG: Recibido id_nino={id_nino}, hechos={hechos}")
+
     db = db_manager.conectar()
-    if not db: return jsonify({"status": "error", "message": "No hay conexión a BD"}), 500
+    if not db: 
+        print("ERROR: No se pudo conectar a la BD")
+        return jsonify({"status": "error", "message": "No hay conexión a BD"}), 500
     
     cursor = None
     try:
         cursor = db.cursor(dictionary=True)
         
-        # 1. Buscamos la evaluación activa o creamos una
-        cursor.execute("SELECT id_evaluacion FROM evaluaciones WHERE id_nino = %s ORDER BY fecha_evaluacion DESC LIMIT 1", (id_nino,))
-        evaluacion = cursor.fetchone()
-        
-        if not evaluacion:
-            return jsonify({"status": "error", "message": "No existe una evaluación iniciada"}), 404
-        
-        id_eval = evaluacion['id_evaluacion']
+        # Mapeo de id_hecho a campos de la tabla anamnesis
+        mapeo_anamnesis = {
+            113: 'vibracion_lengua',
+            114: None,  # No tiene campo específico en anamnesis
+            115: 'error_lectura',
+            116: 'herencia_familiar',
+            117: 'otitis_frecuente',
+            118: 'complicacion_parto',
+            119: 'bilinguismo',
+            120: 'uso_chupon_biberon',
+            121: 'dificultad_masticar',
+            122: 'respira_boca',
+            123: 'muda_dientes',
+            124: 'evitacion_social',
+            125: 'error_escritura',
+            126: 'conciencia_error'
+        }
 
-        # 2. Guardamos cada hecho en evidencia_sesion
-        query = "INSERT INTO evidencia_sesion (id_evaluacion, id_hecho, valor_fuzzy) VALUES (%s, %s, %s)"
+        # Inicializar todos los campos de anamnesis en 0
+        campos_anamnesis = {
+            'herencia_familiar': 0,
+            'otitis_frecuente': 0,
+            'complicacion_parto': 0,
+            'bilinguismo': 0,
+            'uso_chupon_biberon': 0,
+            'dificultad_masticar': 0,
+            'respira_boca': 0,
+            'muda_dientes': 0,
+            'evitacion_social': 0,
+            'vibracion_lengua': 0,
+            'error_escritura': 0,
+            'error_lectura': 0,
+            'conciencia_error': 0
+        }
+
+        # Procesar los hechos recibidos
         for h in hechos:
-            # Insertamos en la BD
-            cursor.execute(query, (id_eval, h['id_hecho'], h['valor_fuzzy']))
-            # Cargamos inmediatamente al motor
-            motor.agregar_hecho(h['id_hecho'], h['valor_fuzzy'])
-        
+            id_hecho = h['id_hecho']
+            valor_fuzzy = float(h['valor_fuzzy'])
+
+            # Convertir valor fuzzy a booleano (1 si > 0.5, 0 si no)
+            valor_booleano = 1 if valor_fuzzy > 0.5 else 0
+
+            campo = mapeo_anamnesis.get(id_hecho)
+            if campo:
+                campos_anamnesis[campo] = valor_booleano
+                print(f"DEBUG: Campo {campo} = {valor_booleano} (id_hecho={id_hecho}, valor_fuzzy={valor_fuzzy})")
+
+        # Verificar si ya existe una anamnesis para este niño
+        cursor.execute("SELECT id_anamnesis FROM anamnesis WHERE id_nino = %s", (id_nino,))
+        anamnesis_existente = cursor.fetchone()
+
+        if anamnesis_existente:
+            # Actualizar anamnesis existente
+            set_clause = ", ".join([f"{campo} = %s" for campo in campos_anamnesis.keys()])
+            valores = list(campos_anamnesis.values()) + [id_nino]
+            query = f"UPDATE anamnesis SET {set_clause} WHERE id_nino = %s"
+            cursor.execute(query, valores)
+            print(f"DEBUG: Anamnesis actualizada para id_nino={id_nino}")
+        else:
+            # Insertar nueva anamnesis
+            columnas = ", ".join(campos_anamnesis.keys())
+            placeholders = ", ".join(["%s"] * len(campos_anamnesis))
+            valores = list(campos_anamnesis.values())
+            query = f"INSERT INTO anamnesis (id_nino, {columnas}) VALUES (%s, {placeholders})"
+            cursor.execute(query, [id_nino] + valores)
+            print(f"DEBUG: Nueva anamnesis insertada para id_nino={id_nino}")
+
         db.commit()
-        return jsonify({"status": "success", "message": "Hechos de anamnesis vinculados a la evaluación"}), 200
+
+        # Verificar que se guardó
+        cursor.execute("SELECT * FROM anamnesis WHERE id_nino = %s", (id_nino,))
+        anamnesis_guardada = cursor.fetchone()
+        print(f"DEBUG: Anamnesis guardada: {anamnesis_guardada}")
+
+        return jsonify({
+            "status": "success", 
+            "message": "Anamnesis guardada correctamente en la tabla anamnesis",
+            "id_nino": id_nino,
+            "anamnesis": anamnesis_guardada
+        }), 200
     except Exception as e:
+        print(f"ERROR en guardar_anamnesis: {e}")
+        import traceback
+        traceback.print_exc()
         if db: db.rollback()
         return jsonify({"status": "error", "message": str(e)}), 500
     finally:

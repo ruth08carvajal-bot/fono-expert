@@ -27,7 +27,7 @@ function Anamnesis({ idNino, edadNino, alFinalizar }) {
             .filter(([_, seleccionado]) => seleccionado)
             .map(([id, _]) => ({
                 id_hecho: parseInt(id),
-                valor: 1.0 // Peso de certeza para el Sistema Experto
+                valor_fuzzy: 1.0 // Peso de certeza para el Sistema Experto
             }));
 
         const payload = {
@@ -35,13 +35,18 @@ function Anamnesis({ idNino, edadNino, alFinalizar }) {
             hechos: hechos
         };
 
+        console.log('Enviando payload:', payload);
+
         try {
             // Endpoint que tenías en Kotlin: /guardar_anamnesis o /evaluar
             const res = await axios.post('http://127.0.0.1:5000/guardar_anamnesis', payload);
+            console.log('Respuesta del servidor:', res.data);
             if (res.data.status === "success") {
-                alFinalizar(res.data); // Navegar a SeleccionSospecha
+                alFinalizar(res.data); // Pasar todos los datos incluyendo id_evaluacion
             }
         } catch (err) {
+            console.error('Error completo:', err);
+            console.error('Respuesta de error:', err.response?.data);
             setError("Error al guardar la anamnesis");
         } finally {
             setCargando(false);

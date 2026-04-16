@@ -5,9 +5,11 @@ import { enviarAFonoaudiologia } from '../services/api';
 function Evaluacion({ nino, alCompletarAnamnesis }) {
   const [diagnostico, setDiagnostico] = useState(null);
   const [cargando, setCargando] = useState(false);
+  const [anamnesisCompletada, setAnamnesisCompletada] = useState(nino.tiene_anamnesis);
+  const [idEvaluacion, setIdEvaluacion] = useState(null);
 
   // Si el niño no tiene anamnesis, mostrar el componente de anamnesis
-  if (!nino.tiene_anamnesis) {
+  if (!anamnesisCompletada) {
     return (
       <Anamnesis 
         idNino={nino.id_nino} 
@@ -15,8 +17,9 @@ function Evaluacion({ nino, alCompletarAnamnesis }) {
         alFinalizar={(datos) => {
           // Recargar la lista de niños para actualizar el estado de anamnesis
           alCompletarAnamnesis();
-          // Aquí podrías cambiar el estado para mostrar la evaluación
-          alert("Anamnesis completada. Ahora puedes proceder con la evaluación.");
+          // Marcar anamnesis como completada y guardar id_evaluacion
+          setAnamnesisCompletada(true);
+          setIdEvaluacion(datos.id_evaluacion);
         }} 
       />
     );
