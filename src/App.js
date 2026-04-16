@@ -83,7 +83,7 @@ function App() {
       {/* REGISTRO NUEVO NIÑO */}
       {vista === 'nuevo_nino' && usuario && (
         <RegistroNino 
-          idPadre={usuario.id_usuario} // 🔥 IMPORTANTE
+          idUsuario={usuario.id_usuario}
           alFinalizar={() => {
             obtenerNinos(usuario.id_usuario);
             setVista('dashboard');

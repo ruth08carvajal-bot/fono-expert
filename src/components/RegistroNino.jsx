@@ -3,7 +3,7 @@ import axios from 'axios';
 import Lottie from "lottie-react";
 import animacionRobot from '../assets/robot.json';
 
-function RegistroNino({ idPadre, alFinalizar, volver }) {
+function RegistroNino({ idUsuario, alFinalizar, volver }) {
     const [nombre, setNombre] = useState('');
     const [fechaNacimiento, setFechaNacimiento] = useState(''); // Estado para la fecha
     const [genero, setGenero] = useState('Masculino');
@@ -36,10 +36,10 @@ function RegistroNino({ idPadre, alFinalizar, volver }) {
         playState('processing', true);
 
         try {
-            const res = await axios.post('http://127.0.0.1:5000/registrar_solo_nino', {
-                id_padre: idPadre,
-                nombre_nino: nombre,
-                fecha_nacimiento: fechaNacimiento, // Enviamos la fecha en lugar de la edad manual
+const res = await axios.post('http://127.0.0.1:5000/registrar_nuevo_hijo', {
+            id_usuario: idUsuario,
+            nombre_nino: nombre,
+            fecha_nacimiento: fechaNacimiento,
                 genero: genero
             });
 
