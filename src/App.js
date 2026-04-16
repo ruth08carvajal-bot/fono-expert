@@ -55,34 +55,51 @@ export default App;
 */
 import { useState } from 'react';
 import Login from './components/Login';
+import Registro from './components/Registro'; // Asegúrate de haber creado este archivo
 import Evaluacion from './components/Evaluacion';
 
 function App() {
   const [usuario, setUsuario] = useState(null);
+  // Nuevo estado para controlar qué formulario mostrar cuando no hay sesión
+  const [vistaActual, setVistaActual] = useState('login'); 
 
-  // Estilo básico para evitar que las cosas se encimen
   const contenedorEstilo = {
     width: '100vw',
     height: '100vh',
-    backgroundColor: 'white', // Forzamos fondo blanco para que no sea opaco
+    backgroundColor: 'white',
     color: 'black',
     position: 'relative'
   };
 
-  return (
-    <div style={contenedorEstilo}>
-      {!usuario ? (
-        <Login alLoguear={(datos) => setUsuario(datos)} />
-      ) : (
+  // Si ya hay un usuario logueado, mostramos la Evaluación
+  if (usuario) {
+    return (
+      <div style={contenedorEstilo}>
         <div style={{ padding: '20px' }}>
           <nav style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #ccc', marginBottom: '20px', padding: '10px' }}>
             <span>Padre: <b>{usuario.message}</b></span>
             <button onClick={() => setUsuario(null)} style={{ cursor: 'pointer' }}>Salir</button>
           </nav>
           
-          {/* Aquí va tu sistema experto */}
           <Evaluacion idNino={usuario.id_nino} />
         </div>
+      </div>
+    );
+  }
+
+  // Si no hay usuario, alternamos entre Login y Registro
+  return (
+    <div style={contenedorEstilo}>
+      {vistaActual === 'login' ? (
+        <Login 
+          alLoguear={(datos) => setUsuario(datos)} 
+          irARegistro={() => setVistaActual('registro')} // Pasamos la función para cambiar de vista
+        />
+      ) : (
+        <Registro 
+          alRegistrar={(datos) => setUsuario(datos)} 
+          volverAlLogin={() => setVistaActual('login')} // Función para regresar
+        />
       )}
     </div>
   );

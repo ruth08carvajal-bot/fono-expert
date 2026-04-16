@@ -3,17 +3,14 @@ import axios from 'axios';
 import Lottie from "lottie-react";
 import animacionRobot from '../assets/robot.json';
 
-function Login({ alLoguear }) {
-  const [esRegistro, setEsRegistro] = useState(false);
+function Login({ alLoguear, irARegistro }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [nombrePadre, setNombrePadre] = useState('');
   const [error, setError] = useState('');
   const [cargando, setCargando] = useState(false);
 
   const playerRef = useRef();
 
-  // 🎯 FRAMES AJUSTADOS
   const estados = {
     idle: [0, 250],
     focusUser: [250, 320],
@@ -23,93 +20,46 @@ function Login({ alLoguear }) {
     error: [680, 780]
   };
 
-  // 🔥 CONTROL REAL DE ANIMACIÓN
   const playState = (state, loop = false) => {
     if (!playerRef.current) return;
-
-    const segmento = estados[state];
-    if (!segmento) return;
-
     const player = playerRef.current;
-
     player.stop();
-
     setTimeout(() => {
       player.setDirection(1);
-      player.playSegments(segmento, true);
-      player.loop = loop;
+      player.playSegments(estados[state], true);
+      // Ajuste de loop seguro
+      if (player.animationItem) {
+        player.animationItem.loop = loop;
+      }
     }, 50);
   };
 
-  // 🔁 VOLVER A IDLE
-  const volverIdle = () => {
-    setTimeout(() => {
-      playState('idle', true);
-    }, 800);
-  };
+  const volverIdle = () => setTimeout(() => playState('idle', true), 800);
 
-  // 🎬 INIT
-  useEffect(() => {
-    playState('idle', true);
+  useEffect(() => { 
+    playState('idle', true); 
   }, []);
 
-  // 🎯 EVENTOS
-  const alEnfocarUsuario = () => {
-    playState('focusUser');
-    volverIdle();
-  };
-
-  const alEnfocarPassword = () => {
-    playState('focusPassword');
-  };
-
-  const alPerderFoco = () => {
-    volverIdle();
-  };
-
-  // 🚀 SUBMIT
   const manejarEnvio = async (e) => {
     e.preventDefault();
     setError('');
     setCargando(true);
-
     playState('processing', true);
 
-    const url = esRegistro
-      ? 'http://127.0.0.1:5000/evaluar'
-      : 'http://127.0.0.1:5000/login';
-
-    const datos = esRegistro
-      ? {
-          correo: email,
-          password: password,
-          nombre_padre: nombrePadre,
-          nombre_nino: 'Por asignar'
-        }
-      : {
-          email: email,
-          password: password
-        };
-
     try {
-      const response = await axios.post(url, datos);
+      const response = await axios.post('http://127.0.0.1:5000/login', {
+        email: email,
+        password: password
+      });
 
       if (response.data.status === "success") {
         playState('success');
-
-        setTimeout(() => {
-          alLoguear(response.data);
-        }, 1500);
+        setTimeout(() => alLoguear(response.data), 1500);
       }
     } catch (err) {
       setError(err.response?.data?.message || "Error de acceso");
-
       playState('error');
-
-      // 🔥 vuelve a idle después del error
-      setTimeout(() => {
-        playState('idle', true);
-      }, 1200);
+      setTimeout(() => playState('idle', true), 1200);
     } finally {
       setCargando(false);
     }
@@ -117,98 +67,53 @@ function Login({ alLoguear }) {
 
   return (
     <div style={estilos.contenedor}>
-
-      {/* 🤖 ROBOT */}
       <div style={estilos.capaFondoRobot}>
-        <Lottie
-          lottieRef={playerRef}
-          animationData={animacionRobot}
-          loop={false}
-          style={estilos.robotFondo}
+        <Lottie 
+          lottieRef={playerRef} 
+          animationData={animacionRobot} 
+          style={estilos.robotFondo} 
+          loop={true}
         />
       </div>
 
-      {/* 🧾 FORM */}
       <div style={estilos.tarjeta}>
-        <h2 style={estilos.titulo}>
-          {esRegistro ? '¡Únete!' : '¡Bienvenido!'}
-        </h2>
-
-        <p style={estilos.subtitulo}>
-          Sistema Experto Fonoaudiológico
-        </p>
+        <h2 style={estilos.titulo}>¡Bienvenido!</h2>
+        <p style={estilos.subtitulo}>Sistema Experto Fonoaudiológico</p>
 
         <form onSubmit={manejarEnvio} style={estilos.formulario}>
-
-          {esRegistro && (
-            <div style={estilos.campo}>
-              <label style={estilos.label}>Nombre</label>
-              <input
-                type="text"
-                value={nombrePadre}
-                onChange={(e) => setNombrePadre(e.target.value)}
-                onFocus={alEnfocarUsuario}
-                onBlur={alPerderFoco}
-                style={estilos.input}
-                required
-              />
-            </div>
-          )}
-
           <div style={estilos.campo}>
             <label style={estilos.label}>Correo</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onFocus={alEnfocarUsuario}
-              onBlur={alPerderFoco}
-              style={estilos.input}
-              required
+            <input 
+              type="email" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              onFocus={() => { playState('focusUser'); volverIdle(); }}
+              style={estilos.input} required 
             />
           </div>
 
           <div style={estilos.campo}>
             <label style={estilos.label}>Contraseña</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value);
-
-                if (e.target.value.length > 0) {
-                  playState('focusPassword');
-                } else {
-                  playState('idle', true);
-                }
-              }}
-              onFocus={alEnfocarPassword}
-              onBlur={alPerderFoco}
-              style={estilos.input}
-              required
+            <input 
+              type="password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              onFocus={() => playState('focusPassword')}
+              onBlur={volverIdle}
+              style={estilos.input} required 
             />
           </div>
 
           {error && <div style={estilos.error}>{error}</div>}
 
-          <button
-            type="submit"
-            disabled={cargando}
-            style={estilos.boton}
-          >
-            {cargando
-              ? 'Cargando...'
-              : (esRegistro ? 'Registrar' : 'Entrar')}
+          <button type="submit" disabled={cargando} style={estilos.boton}>
+            {cargando ? 'Cargando...' : 'Entrar'}
           </button>
-
         </form>
 
         <div style={estilos.footer}>
-          <button
-            onClick={() => setEsRegistro(!esRegistro)}
-            style={estilos.botonLink}
-          >
-            {esRegistro ? 'Ya tengo cuenta' : 'Crear una cuenta'}
+          <button onClick={irARegistro} style={estilos.botonLink}>
+            ¿No tienes cuenta? Crea una aquí
           </button>
         </div>
       </div>
@@ -216,7 +121,7 @@ function Login({ alLoguear }) {
   );
 }
 
-// 🎨 ESTILOS
+// DEFINICIÓN DE ESTILOS (Asegúrate de que esto esté después de la función)
 const estilos = {
   contenedor: {
     display: 'flex',
@@ -293,7 +198,8 @@ const estilos = {
     border: 'none',
     color: '#3182ce',
     cursor: 'pointer',
-    textDecoration: 'underline'
+    textDecoration: 'underline',
+    fontSize: '14px'
   },
   footer: { marginTop: '20px' },
   error: {
